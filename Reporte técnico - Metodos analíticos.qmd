@@ -1,0 +1,117 @@
+---
+title: "Métodos analíticos - Reporte técnico"
+author: "Javier Monitel, Elias Mercado, y Maritrini García"
+format: html
+editor: visual
+---
+
+# Identificación de cobertura de AT&T en la alcaldía Álvaro Obregón en la Ciudad de México  
+
+#### Identificando la cobertura 4G de AT&T en la alcaldía Álvaro Obregón en la Ciudad de México. 
+
+El siguiente proyecto consiste en la identificación de cobertura 4G de la compañía telefónica AT&T en la alcaldía Álvaro Obregón en Ciudad de México.
+
+#### Acerca de los datos utilizados. 
+
+Los datos que se utilizaron para el proyecto fueron obtenidos de un reporte de cobertura de AT&T en *Speed test*, una herramienta en línea desarrollada por *Ookla* que permite a los usuarios medir y evaluar el rendimiento de su conexión a Internet, proporcionando diversas métricas de rendimiento de la red. Estos escaneos de cobertura proporcionan información en tiempo real sobre las condiciones de la señal, el uso del espectro y el equipo de red con un nivel de detalle geográfico preciso.
+
+Cuando está habilitada, los dispositivos Android que ejecutan la aplicación Speedtest capturan características clave de la experiencia de cada usuario con las redes móviles circundantes a lo largo del día. Cada escaneo de cobertura incluye información sobre la red móvil a la que el dispositivo está conectado, o no, y sobre la conexión a esa red.
+
+#### Información por escaneo 
+
+Cada escaneo de cobertura proporciona una gran cantidad de información relacionada con las siguientes categorías:
+
+-   [Información del Operador:]{.underline} Los escaneos contienen información sobre la red del suscriptor y la red a la que está conectado el dispositivo.
+
+-   [Información de la Señal de Radio]{.underline}: Intensidad y calidad de la señal (RSRP, RSRQ, RSSI), banda de frecuencia (EARFCN, UARFCN, ARFCN) y otras propiedades de la conexión celular.
+
+-   [Conexión]{.underline}: Tipo de conexión de datos (por ejemplo, LTE, WiFi) y tipo de conexión celular.
+
+-   [Red de Acceso Radio]{.underline}: Área de seguimiento (LAC/TAC), ID de la estación base, ID de celda, ID de celda física (PCI).
+
+-   [Ubicación del Dispositivo]{.underline}: Latitud, Longitud, Altitud y Precisión.
+
+Con base en las categorías anteriores se tienen en total 114 variables.
+
+#### Información de radiobases 
+
+Se cuenta con la información de la ubicación de todas las radiobases de AT&T en Ciudad de México.
+
+#### 
+Variables seleccionadas 
+
+-   device_id : A cada dispositivo individual se le asigna un ID único, el cual está vinculado a todas las pruebas realizadas en el dispositivo.
+
+-   client_latitude: Latitud de la ubicación del cliente
+
+-   client_longitude: Longitud de la ubicación del cliente
+
+-   rsrp: Potencia de señal recibida de referencia; este campo se prefiltra entre -144 y -44 decibeles. Siendo -44 decibeles la potencia más alta y -144 decibeles la potencia más débil.
+
+#### Variables calculadas 
+
+-   h3_adress: ubicación asignada a un hexágono específico en la superficie de la Tierra.
+
+-   Dist: Distancia en metros de la ubicación de la medición del usuario a la radio base más cercana.
+
+#### Diagrama causal 
+
+![](images/diagrama-causal .png){width="403"}
+
+#### Exploración de los datos 
+
+Se tienen 983,959 observaciones, cada observación corresponde a un escaneo de cobertura .
+
+```{r,include=FALSE,echo=FALSE}
+library('arrow')
+library('dplyr')
+library('ggplot2')
+```
+
+```{r,include=FALSE,echo=FALSE}
+df <- read_parquet("tbl_usuarios_ATT.parquet")
+```
+
+Las ubicación de las observaciones es mappeada en 7,273 hexagonos diferentes en la Ciudad de México.
+
+```{r,include= TRUE,echo=TRUE}
+distinct_h3_addresses <- df %>%
+  select(h3_address) %>%
+  distinct() %>%
+  nrow()
+print(distinct_h3_addresses)
+```
+
+El histograma de la potencia de la señal recibida se puede ver a continuación, calculando los cuantiles de la variable se obtiene que el 25% de las observaciones tienen una potencia igual o menor a -105 dBm, el 50 % tienen una potencia igual o menor a -96 dBm, por último, el 75 % de las observaciones tienen una potencia igual o menor a -86 dBm.
+
+```{r,include=FALSE,echo=FALSE}
+cuantiles_rsrp <- quantile(df$rsrp, probs = c(0, 0.25, 0.5, 0.75, 1))
+print(cuantiles_rsrp)
+```
+
+```{r}
+ggplot(df, aes(x = rsrp)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histograma de RSRP", x = "RSRP", y = "Frecuencia") +
+  theme_minimal()
+```
+
+Para la distancia entre la ubicación de la medición del usuario a la radio base más cercana se observa el siguiente histograma, calculando sus cuantiles se observa que el 25% de las observaciones tienen una distancia igual o menor a 169.1 metros, el 50 % tienen una distancia igual o menor a 269.02, por último, el 75 % de las observaciones tienen una distancia igual o menor a 396.8 metros .
+
+```{r,include=FALSE,echo=FALSE}
+cuantiles_d <- quantile(df$d, probs = c(0, 0.25, 0.5, 0.75, 1))
+print(cuantiles_d)
+```
+
+```{r}
+ggplot(df, aes(x = d)) +
+  geom_histogram(binwidth = 1, fill = "orange", color = "black") +
+  labs(title = "Histograma de distancia", x = "Distancia", y = "Frecuencia") +
+  theme_minimal()
+```
+
+Diagrama causal : <https://docs.google.com/presentation/d/1k-C1BaDfyQko0Lum0DDkppOeqV52Ho1v7I_2vAFFnoI/edit#slide=id.p>
+
+1\. Un reporte técnico del trabajo que hicieron (escrito con textos, gráficas, tablas y código) que explique con detalle lo que hicieron para una audiencia técnica (es decir, dirigido a alguno de sus colegas por ejemplo). Deben incluir sus
+
+1\) objetivos, explicación de decisiones importantes y métodos de evaluación. Este reporte debe ser entregado el día del examen final.
