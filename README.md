@@ -1,1 +1,1 @@
-# Metodos-anal-ticos
+# Metodos-analíticos
